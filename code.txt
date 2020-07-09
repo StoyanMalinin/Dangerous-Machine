@@ -1,0 +1,128 @@
+int *buttonState = new int[15];
+
+int motorPin = 13;
+int button1Pin = 2;
+
+int tmpPin = 0;
+int motionPin = 1, motorState = 0;
+int gasPin = 2;
+
+int gasLamp = 6;
+int redPin = 5, bluePin = 4, greenPin = 3;
+
+void setup()
+{
+	Serial.begin(9600);
+    
+    for(int i = 0;i<15;i++) buttonState[i] = 0;
+
+    pinMode(13, OUTPUT);
+    pinMode(2, OUTPUT);
+    pinMode(gasLamp, OUTPUT);
+}
+
+void togglePin(int pin, int button)
+{
+  if(buttonState[button]==0 && digitalRead(button)==1)
+  {
+      Serial.println(digitalRead(pin));
+      motorState ^= 1;
+
+      digitalWrite(pin, motorState);
+
+  }  
+}
+
+void hardToggle(int pin, int state)
+{
+   digitalWrite(pin, state);
+}
+
+void updateButton(int button)
+{
+   pinMode(button, OUTPUT);
+   buttonState[button] = digitalRead(button);
+}
+
+float getTemp(int sensorPin)
+{
+  int reading = analogRead(sensorPin);
+ // measure the 5v with a meter for an accurate value
+ //In particular if your Arduino is USB powered
+ float voltage = reading * 4.90;
+ voltage /= 1024.0;
+ 
+ // now print out the temperature
+ float temperatureC = (voltage - 0.5) * 100;
+ return temperatureC;
+}
+
+float getMotion(int sensorPin)
+{
+  float reading = analogRead(sensorPin);
+  return reading;
+}
+
+void emergencyToggle()
+{
+    motorState = 0;
+    hardToggle(motorPin, 0);
+    buttonState[button1Pin] = 0;
+         
+   	updateButton(button1Pin);
+}
+
+void setColorState(int r, int g, int b)
+{
+   digitalWrite(redPin, r);
+   digitalWrite(greenPin, g);
+   digitalWrite(bluePin, b);
+}
+
+void colorize(float temp)
+{
+   if(temp<-10) setColorState(0, 0, 1);
+   else if(temp<=50) setColorState(0, 1, 0);
+   else setColorState(1, 0, 0);
+}
+
+float getGas(int pin)
+{
+   int valor = analogRead(pin);
+   valor = map(valor, 300, 750, 0, 100);
+
+   return valor;	
+}
+
+void loop()
+{
+    float temp = getTemp(tmpPin);
+    colorize(temp);
+  
+    if(temp>50 || temp<-10) 
+    {
+        emergencyToggle();
+    	return;
+    }
+    if(getMotion(motionPin)!=0)
+    {
+        emergencyToggle();
+        return;
+    }
+    if(getGas(gasPin)>75)
+    {
+        digitalWrite(gasLamp, HIGH);
+      
+        emergencyToggle();
+        return;
+    }
+    else
+    {
+        digitalWrite(gasLamp, LOW);
+    }
+   
+    togglePin(motorPin, button1Pin);
+    updateButton(button1Pin);
+  
+    delay(30); // Delay a little bit to improve simulation performance
+}
